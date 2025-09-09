@@ -1,27 +1,28 @@
 import { Game } from "../common/game.js"
 
 export class Tile {
-  div = null;
-  value = 0;
-  row;
-  col;
+  div: HTMLDivElement;
+  value: number;
+  row: number;
+  col: number;
 
-  constructor(boardDiv, row, col) {
+  constructor(boardDiv: HTMLDivElement, row: number, col: number) {
     this.div = document.createElement("div");
     this.col = col;
     this.row = row;
-    this.setValue(this.value);
+    this.value = 0;
+    this.setValue(0);
 
     boardDiv.appendChild(this.div);
   }
 
-  setValue(value) {
+  setValue(value: number) {
     this.value = value;
 
     if (this.value === 0) {
       this.div.innerText = "";
     } else {
-      this.div.innerText = this.value;
+      this.div.innerText = String(this.value);
     }
 
     this.div.id = `tile${this.row}${this.col}`;
@@ -39,10 +40,10 @@ export class Tile {
 }
 
 export class Game2048 extends Game {
-  tiles = [[],[],[],[]];
-  containerDiv;
-  boardDiv;
-  scoreDiv;
+  tiles: Tile[][];
+  containerDiv: HTMLDivElement;
+  boardDiv: HTMLDivElement;
+  scoreDiv: HTMLDivElement;
 
   constructor() {
     super((e) => {
@@ -67,6 +68,8 @@ export class Game2048 extends Game {
       this.updateScore();
     });
 
+    this.tiles = [[], [], [], []];
+    
     this.containerDiv = document.createElement("div");
     this.containerDiv.className = "container";
 
@@ -84,24 +87,31 @@ export class Game2048 extends Game {
 
     for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 4; col++) {
-        this.tiles[col][row] = new Tile(this.boardDiv, row, col);
+        let tiles = this.tiles[col];
+        if (tiles) {
+          tiles[row] = new Tile(this.boardDiv, row, col);
+        }
       }
     }
 
     this.spawnRandom(2);  
   }
 
-  getTile(col, row) {
-    return this.tiles[row][col];
+  getTile(col: number, row: number): Tile | undefined {
+    let tiles = this.tiles[row];
+
+    if (tiles) {
+      return tiles[col];
+    }     
   }
 
-  spawnRandom(total) {
+  spawnRandom(total: number) {
     for (let updated = 0; updated < total; ) {
       let row = Math.round(Math.random() * 3);
       let col = Math.round(Math.random() * 3);
       let tile = this.getTile(row, col);
 
-      if (tile.value === 0) {
+      if (tile && tile.value === 0) {
         tile.setValue(2);
         updated++;
       }
@@ -111,7 +121,7 @@ export class Game2048 extends Game {
   isFull() {
     for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 4; col++) {
-        if (this.getTile(row, col).value == 0) {
+        if (this.getTile(row, col)?.value === 0) {
           return false;
         }
       }
@@ -127,6 +137,10 @@ export class Game2048 extends Game {
         for (let col = 0; col < 4; col++) {
           let tile = this.getTile(row, col);
           let tileAbove = this.getTile(row - 1, col);
+
+          if (!tile || !tileAbove) {
+            continue;
+          }
 
           if (tile.value === 0) {
             continue;
@@ -157,6 +171,10 @@ export class Game2048 extends Game {
           let tile = this.getTile(row, col);
           let tileBelow = this.getTile(row + 1, col);
 
+          if (!tile || !tileBelow) {
+            continue;
+          }          
+
           if (tile.value === 0) {
             continue;
           }
@@ -186,6 +204,10 @@ export class Game2048 extends Game {
           let tile = this.getTile(row, col);
           let tileRight = this.getTile(row, col + 1);
 
+          if (!tile || !tileRight) {
+            continue;
+          }          
+
           if (tile.value === 0) {
             continue;
           }
@@ -213,18 +235,22 @@ export class Game2048 extends Game {
       for (let col = 3; col > 0; col--) {
         for (let row = 0; row < 4; row++) {
           let tile = this.getTile(row, col);
-          let tileRight = this.getTile(row, col - 1);
+          let tileLeft = this.getTile(row, col - 1);
+
+          if (!tile || !tileLeft) {
+            continue;
+          }          
 
           if (tile.value === 0) {
             continue;
           }
 
-          if (tile.value === tileRight.value) {
-            tileRight.double();
+          if (tile.value === tileLeft.value) {
+            tileLeft.double();
             tile.reset();
             changed = true;
-          } else if (tileRight.value === 0) {
-            tileRight.setValue(tile.value);
+          } else if (tileLeft.value === 0) {
+            tileLeft.setValue(tile.value);
             tile.reset();
             changed = true;
           } 
@@ -240,11 +266,16 @@ export class Game2048 extends Game {
 
     for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 4; col++) {
-        score = score + this.getTile(col, row).value;
+        let tile = this.getTile(col, row);
+        if (tile) {
+          score = score + tile.value;
+        }
       }
     }
 
-    document.getElementById("score").innerText = `Score: ${score}`;
+    if (this.scoreDiv != null) {
+      this.scoreDiv.innerText = `Score: ${score}`;
+    }
   }
 }
 

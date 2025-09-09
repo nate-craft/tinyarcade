@@ -1,6 +1,10 @@
 {
   "name": "tinyarcade",
-  "module": "index.html",
+  "module": "index.ts",
+  "scripts": {
+    "build": "bun build --outdir=dist index.ts",
+    "run": "bun serve -n"
+  },
   "type": "module",
   "private": true,
   "devDependencies": {

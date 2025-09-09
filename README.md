@@ -9,5 +9,5 @@ bun install
 To run:
 
 ```bash
-bun serve -n
+bun run build && bun run run
 ```
