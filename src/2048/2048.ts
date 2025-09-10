@@ -33,13 +33,15 @@ class ActiveTile {
     this.value = DEFAULT_VALUE;
 
     this.div = document.createElement("div");
-    this.div.style.width = String(rect.width);
-    this.div.style.height = String(rect.height);
+    this.div.style.width = `${rect.width}px`;
+    this.div.style.height = `${rect.height}px`;
 
     let desiredRect = this.tileTranslation.div.getBoundingClientRect();
-    this.div.style.left = String(desiredRect.left);
-    this.div.style.top = String(desiredRect.top);
+    this.div.style.left = `${desiredRect.left}px`;
+    this.div.style.top = `${desiredRect.top}px`;
 
+    console.log(`${desiredRect.left}, ${desiredRect.top}`);
+    console.log(`${this.div.style.left}, ${this.div.style.top}`);
     this.setValue(value);
 
     if (!gameContainer) {
@@ -55,13 +57,13 @@ class ActiveTile {
   updateWithResize() {
     const rect = this.tileTranslation.div.getBoundingClientRect();
 
-    this.div.style.width = String(rect.width);
-    this.div.style.height = String(rect.height);
+    this.div.style.width = `${rect.width}`;
+    this.div.style.height = `${rect.height}`;
     if (this.div.style.transform.length !== 0) {
       this.div.style.transform = `translate(0,0)`
     }
-    this.div.style.left = String(rect.left);
-    this.div.style.top = String(rect.top);
+    this.div.style.left = `${rect.left}px`;
+    this.div.style.top = `${rect.top}px`;
 
     this.translationX = 0;
     this.translationY = 0;
@@ -78,15 +80,15 @@ class ActiveTile {
       this.translationY += (newRec.top - oldRec.top);
     }
 
-    this.div.style.width = String(newRec.width);
-    this.div.style.height = String(newRec.height);
+    this.div.style.width = `${newRec.width}px`;
+    this.div.style.height = `${newRec.height}px`;
     this.div.style.transform = `translate(${this.translationX}px, ${this.translationY}px)`
   }
 
   setValue(value: number) {
     this.value = value;
 
-    this.div.id = `tile-moving${this.tileTranslation.row}${this.tileTranslation.col}-${Math.random()}`;
+    this.div.id = `tile-moving${this.tileTranslation.row}${this.tileTranslation.col}-${Math.floor(Math.random()*1000)}`;
     this.div.className = "tile-moving";
     this.div.classList.add(`tile${value}`);
     this.div.innerText = String(this.value);
@@ -231,8 +233,8 @@ export class Game2048 extends Game {
     this.overlay.id = "overlay";
     this.overlay.className = "overlay";
 
-    this.containerDiv.appendChild(this.boardDiv);
     this.containerDiv.appendChild(this.scoreDiv);
+    this.containerDiv.appendChild(this.boardDiv);
     this.boardDiv.appendChild(this.overlay);
 
     super.initDOM(this.containerDiv);

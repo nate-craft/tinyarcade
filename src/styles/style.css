@@ -2,14 +2,11 @@ body {
   background: #B5A03D;
   padding: 0;
   margin: 0;
-  font-size: x-large;
   font-family: arial;
   overflow: hidden;
 }
 
 .content {
-  font-size: xx-large;
-  font-family: arial;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -23,6 +20,7 @@ body {
   height: 50px;
   background: #D3BE5C;
   color: black;
+  font-size: x-large;
   gap: 40px;
   padding-left: 40px;
   margin: 0;
