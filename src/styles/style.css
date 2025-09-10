@@ -27,6 +27,11 @@ body {
 }
 
 .nav-item {
-    color: inherit;
-    text-decoration: none;    
+  color: inherit;
+  text-decoration: none;    
+}
+
+.noscript-popup {
+  text-align: center;
+  font-size: x-large;
 }
