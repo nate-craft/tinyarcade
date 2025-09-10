@@ -40,8 +40,6 @@ class ActiveTile {
     this.div.style.left = `${desiredRect.left}px`;
     this.div.style.top = `${desiredRect.top}px`;
 
-    console.log(`${desiredRect.left}, ${desiredRect.top}`);
-    console.log(`${this.div.style.left}, ${this.div.style.top}`);
     this.setValue(value);
 
     if (!gameContainer) {
