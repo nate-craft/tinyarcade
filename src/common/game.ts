@@ -1,8 +1,8 @@
 export type KeyDownHandler = (event: KeyboardEvent) => void;
 
 export class Game {
-  onKeyDown;
-  gameDiv;
+  onKeyDown: KeyDownHandler;
+  gameDiv: HTMLElement | null;
 
   constructor(onKeyDown: KeyDownHandler) {
     this.onKeyDown = onKeyDown;

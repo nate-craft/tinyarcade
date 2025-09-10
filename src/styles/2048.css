@@ -11,6 +11,7 @@
 }
 
 .board {
+  position: relative;
   display: grid;
   padding: 15px;
   width: 80%;
@@ -23,6 +24,20 @@
   border: 2px solid #8C7F42;
 }
 
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(150, 150, 150, 0.8);
+  z-index: 99;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
 .tile {
   text-align: center;
   display: flex;
@@ -30,7 +45,18 @@
   align-items: center;
   aspect-ratio: 1 / 1;
   border-radius: 5px;
-  transition: transform 0.1s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.tile-moving {
+  position: absolute;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  aspect-ratio: 1 / 1;
+  border-radius: 5px;
+  transition: transform 0.05s;
+  box-shadow: 0px 4px #998f39;
 }
 
 .tile0 {
@@ -38,11 +64,11 @@
 }
 
 .tile2 {
-  background: lightgreen;
+  background: #4dbf4d;
 }
 
 .tile4 {
-  background: aqua;
+  background: #2db2c8;
 }
 
 .tile8 {
@@ -58,23 +84,23 @@
 }
 
 .tile64 {
-  background: blueviolet;
+  background: #b588df;
 }
 
 .tile128 {
-  background: rebeccapurple;
+  background: #d76730;
 }
 
 .tile256 {
-  background: limegreen;
+  background: #3d843d;
 }
 
 .tile512 {
-  background: blue;
+  background: #4141d7;
 }
 
 .tile1024 {
-  background: red;
+  background: #d94444;
 }
 
 .tile2048 {

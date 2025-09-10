@@ -1,75 +1,222 @@
 import { Game } from "../common/game.js"
 
-export class Tile {
+const TILE_COUNT = 4;
+const DEFAULT_VALUE = 2;
+
+enum Direction {
+  Up,
+  Down,
+  Right,
+  Left,
+}
+
+class ActiveTile {
+  tileReference: Tile | undefined;
+  tileTranslation: Tile;
   div: HTMLDivElement;
+  translationX: number;
+  translationY: number;
   value: number;
-  row: number;
-  col: number;
 
-  constructor(boardDiv: HTMLDivElement, row: number, col: number) {
+  constructor(gameContainer: HTMLElement | null, topLeftTileBlank: Tile | undefined, tileWanted: Tile, value: number) {
+    this.tileReference = topLeftTileBlank;
+    this.tileTranslation = tileWanted;
+
+    if (!this.tileReference) {
+      throw new Error("Top left tile cannot be blank");
+    }
+
+    const rect = this.tileReference.div.getBoundingClientRect();
+
+    this.translationX = 0;
+    this.translationY = 0;
+    this.value = DEFAULT_VALUE;
+
     this.div = document.createElement("div");
-    this.col = col;
-    this.row = row;
-    this.value = 0;
-    this.setValue(0);
+    this.div.style.width = String(rect.width);
+    this.div.style.height = String(rect.height);
 
-    boardDiv.appendChild(this.div);
+    let desiredRect = this.tileTranslation.div.getBoundingClientRect();
+    this.div.style.left = String(desiredRect.left);
+    this.div.style.top = String(desiredRect.top);
+
+    this.setValue(value);
+
+    if (!gameContainer) {
+      throw new Error("Top left tile cannot be blank");
+    }
+
+    gameContainer.appendChild(this.div);
+
+    // Allow DOM-rearrangment 
+    setTimeout(() => this.updateWithResize(), 1);
+  }
+
+  updateWithResize() {
+    const rect = this.tileTranslation.div.getBoundingClientRect();
+
+    this.div.style.width = String(rect.width);
+    this.div.style.height = String(rect.height);
+    if (this.div.style.transform.length !== 0) {
+      this.div.style.transform = `translate(0,0)`
+    }
+    this.div.style.left = String(rect.left);
+    this.div.style.top = String(rect.top);
+
+    this.translationX = 0;
+    this.translationY = 0;
+  }
+
+  moveDiv(newTile: Tile, direction: Direction) {
+    const oldRec = this.tileTranslation.div.getBoundingClientRect();
+    this.tileTranslation = newTile;
+    const newRec = this.tileTranslation.div.getBoundingClientRect();
+
+    if (direction === Direction.Right || direction === Direction.Left) {
+      this.translationX += (newRec.left - oldRec.left);
+    } else if (direction === Direction.Down || direction === Direction.Up) {
+      this.translationY += (newRec.top - oldRec.top);
+    }
+
+    this.div.style.width = String(newRec.width);
+    this.div.style.height = String(newRec.height);
+    this.div.style.transform = `translate(${this.translationX}px, ${this.translationY}px)`
   }
 
   setValue(value: number) {
     this.value = value;
 
-    if (this.value === 0) {
-      this.div.innerText = "";
-    } else {
-      this.div.innerText = String(this.value);
-    }
-
-    this.div.id = `tile${this.row}${this.col}`;
-    this.div.className = "tile";
+    this.div.id = `tile-moving${this.tileTranslation.row}${this.tileTranslation.col}-${Math.random()}`;
+    this.div.className = "tile-moving";
     this.div.classList.add(`tile${value}`);
+    this.div.innerText = String(this.value);
   }
 
   double() {
     this.setValue(this.value * 2);
   }
+}
 
-  reset() {
-    this.setValue(0);
+class Tile {
+  div: HTMLDivElement;
+  row: number;
+  col: number;
+
+  constructor(boardDiv: HTMLDivElement, col: number, row: number) {
+    this.div = document.createElement("div");
+    this.col = col;
+    this.row = row;
+    this.div.id = `tile${this.row}${this.col}`;
+    this.div.className = "tile";
+    this.div.classList.add(`tile0`);
+
+    boardDiv.appendChild(this.div);
   }
 }
 
 export class Game2048 extends Game {
-  tiles: Tile[][];
+  tilesBlank: Tile[][];
+  topLeftTileBlank: Tile | undefined;
+  tilesActive: (ActiveTile | undefined)[][];
   containerDiv: HTMLDivElement;
   boardDiv: HTMLDivElement;
   scoreDiv: HTMLDivElement;
+  overlay: HTMLDivElement;
+  boardObserver: ResizeObserver | undefined;
+  running: boolean = true;
 
   constructor() {
-    super((e) => {
-      if (e.key === "ArrowUp") {
-        if (this.moveUp()) {
-          this.spawnRandom(1);
+    super((e: KeyboardEvent) => {
+      if (!this.running) {
+        if (e.key == " ") {
+          this.restart();
         }
-      } else if (e.key === "ArrowDown") {
-        if (this.moveDown()) {
-          this.spawnRandom(1);
-        } 
-      } else if (e.key === "ArrowLeft") {
-        if (this.moveLeft()) {
-          this.spawnRandom(1);
-        }
-      } else if (e.key === "ArrowRight") {
-        if (this.moveRight()) {
-          this.spawnRandom(1);
+
+        return;
+      }
+      
+      let tileMoved = false;
+      let moveKeyPressed = false;
+
+      for (let i = 0; i < 4; i++) {
+        if (e.key === "ArrowUp" || e.key === "w") {
+          if (this.moveUp(false)) {
+            tileMoved = true;
+          }
+          moveKeyPressed = true;
+        } else if (e.key === "ArrowDown" || e.key === "s") {
+          if (this.moveDown(false)) {
+            tileMoved = true;
+          }
+          moveKeyPressed = true;
+        } else if (e.key === "ArrowLeft" || e.key === "a") {
+          if (this.moveLeft(false)) {
+            tileMoved = true;
+          }
+          moveKeyPressed = true;
+        } else if (e.key === "ArrowRight" || e.key === "d") {
+          if (this.moveRight(false)) {
+            tileMoved = true;
+          }
+          moveKeyPressed = true;
         }
       }
 
-      this.updateScore();
+      if (this.gameDiv) {
+        let lastWidth = this.boardDiv.offsetWidth;
+        let lastHeight = this.boardDiv.offsetHeight;
+
+        this.boardObserver = new ResizeObserver(() => {
+          const currentWidth = this.boardDiv.offsetWidth;
+          const currentHeight = this.boardDiv.offsetHeight;
+
+          if (currentWidth !== lastWidth || currentHeight !== lastHeight) {
+            lastWidth = currentWidth;
+            lastHeight = currentHeight;
+          } else {
+            return;
+          }
+
+          for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 4; col++) {
+              let tile = this.getActiveTile(col, row);
+              if (tile) {
+                tile.updateWithResize();
+              }
+            }
+          }
+        });
+        this.boardObserver.observe(this.containerDiv);
+        this.boardObserver.observe(document.body);
+      } else {
+        this.boardObserver = undefined;
+      }
+
+      if (tileMoved) {
+        this.spawnRandom(1);
+        this.updateScore();
+      }
+
+      if (moveKeyPressed && this.isFull()) {
+        this.running = false;
+        this.overlay.style.display = String("flex");
+
+        if (!this.overlay.firstElementChild) {
+          let gameOverDiv = document.createElement("div");
+          let instructionDiv = document.createElement("div");
+
+          gameOverDiv.innerText = "GAME OVER";
+          instructionDiv.innerText = "Press Space To Restart!";
+
+          this.overlay.appendChild(gameOverDiv);
+          this.overlay.appendChild(instructionDiv);
+        } 
+      }
     });
 
-    this.tiles = [[], [], [], []];
-    
+    this.tilesBlank = [[], [], [], []];
+    this.tilesActive = [[], [], [], []];
+
     this.containerDiv = document.createElement("div");
     this.containerDiv.className = "container";
 
@@ -80,40 +227,108 @@ export class Game2048 extends Game {
     this.scoreDiv = document.createElement("div");
     this.scoreDiv.id = "score";
 
+    this.overlay = document.createElement("div");
+    this.overlay.id = "overlay";
+    this.overlay.className = "overlay";
+
     this.containerDiv.appendChild(this.boardDiv);
     this.containerDiv.appendChild(this.scoreDiv);
+    this.boardDiv.appendChild(this.overlay);
 
     super.initDOM(this.containerDiv);
 
     for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 4; col++) {
-        let tiles = this.tiles[col];
-        if (tiles) {
-          tiles[row] = new Tile(this.boardDiv, row, col);
-        }
+        this.setBlankTile(col, row, new Tile(this.boardDiv, col, row));
+        this.setActiveTile(col, row, undefined);
       }
     }
 
-    this.spawnRandom(2);  
+    this.topLeftTileBlank = this.getBlankTile(0, 0);
+
+    this.spawnRandom(1);
+    this.updateScore();
   }
 
-  getTile(col: number, row: number): Tile | undefined {
-    let tiles = this.tiles[row];
+  restart() {
+    this.overlay.style.display = String("none");
+    this.running = true;
+
+    if (this.gameDiv) {
+      document.querySelectorAll('.tile-moving').forEach(tile => {
+          tile.remove();
+      });
+    }
+
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 4; col++) {
+        this.setActiveTile(col, row, undefined);
+      }
+    }
+
+    this.spawnRandom(1);
+    this.updateScore();    
+  }
+
+  override end() {
+    super.end();
+    if (this.boardObserver) {
+      this.boardObserver.disconnect();
+    }
+  }
+
+  getBlankTile(col: number, row: number): Tile | undefined {
+    let tiles = this.tilesBlank[row];
 
     if (tiles) {
       return tiles[col];
-    }     
+    }
+  }
+
+
+  getActiveTile(col: number, row: number): ActiveTile | undefined {
+    let tiles = this.tilesActive[row];
+
+    if (tiles) {
+      return tiles[col];
+    }
+  }
+
+
+  setBlankTile(col: number, row: number, tile: Tile) {
+    let tiles = this.tilesBlank[row];
+    if (tiles) {
+      tiles[col] = tile;
+    }
+  }
+
+  setActiveTile(col: number, row: number, tile: ActiveTile | undefined) {
+    let tiles = this.tilesActive[row];
+    if (tiles) {
+      tiles[col] = tile;
+    }
+  }
+
+  reset(tile: ActiveTile) {
+    let tiles = this.tilesActive[tile.tileTranslation.row];
+
+    if (tiles) {
+      tile.div.remove();
+      tiles[tile.tileTranslation.col] = undefined;
+    }
   }
 
   spawnRandom(total: number) {
-    for (let updated = 0; updated < total; ) {
+    for (let limit = 0, updated = 0; updated < total && limit < 1000; limit++) {
       let row = Math.round(Math.random() * 3);
       let col = Math.round(Math.random() * 3);
-      let tile = this.getTile(row, col);
 
-      if (tile && tile.value === 0) {
-        tile.setValue(2);
-        updated++;
+      let blank = this.getBlankTile(col, row);
+      let existing = this.getActiveTile(col, row);
+
+      if (blank && !existing) {
+        this.setActiveTile(col, row, new ActiveTile(this.gameDiv, this.topLeftTileBlank, blank, DEFAULT_VALUE));
+        updated++
       }
     }
   }
@@ -121,40 +336,61 @@ export class Game2048 extends Game {
   isFull() {
     for (let row = 0; row < 4; row++) {
       for (let col = 0; col < 4; col++) {
-        if (this.getTile(row, col)?.value === 0) {
+        let tile = this.getActiveTile(col, row);
+        if (!tile) {
           return false;
         }
       }
     }
-    return true;
+
+    return !this.moveUp(true) && !this.moveDown(true) && !this.moveRight(true) && !this.moveLeft(true);
   }
 
-  moveUp() {
+  moveNext(
+    col: number,
+    row: number,
+    colNext: number,
+    rowNext: number,
+    dryRun: boolean,
+    direction: Direction
+  ): boolean {
+    const tile = this.getActiveTile(col, row);
+    const tileNext = this.getActiveTile(colNext, rowNext);
+    const tileNextBlank = this.getBlankTile(colNext, rowNext);
+
+    if (!tile || !tileNextBlank) {
+      return false;
+    }
+
+    if (tileNext && tile.value === tileNext.value) {
+      if (!dryRun) {
+        this.reset(tileNext);
+
+        tile.moveDiv(tileNextBlank, direction);
+        tile.double();
+        this.setActiveTile(colNext, rowNext, tile);
+        this.setActiveTile(col, row, undefined);
+      }
+      return true;
+    } else if (!tileNext) {
+      if (!dryRun) {
+        tile.moveDiv(tileNextBlank, direction);
+        this.setActiveTile(colNext, rowNext, tile);
+        this.setActiveTile(col, row, undefined);
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  moveUp(dryRun: boolean) {
     let changed = false;
 
-    for (let i = 0; i < 4; i++) {
-      for (let row = 3; row > 0; row--) {
-        for (let col = 0; col < 4; col++) {
-          let tile = this.getTile(row, col);
-          let tileAbove = this.getTile(row - 1, col);
-
-          if (!tile || !tileAbove) {
-            continue;
-          }
-
-          if (tile.value === 0) {
-            continue;
-          }
-
-          if (tile.value === tileAbove.value) {
-            tileAbove.double();
-            tile.reset();
-            changed = true;
-          } else if (tileAbove.value === 0) {
-            tileAbove.setValue(tile.value);
-            tile.reset();
-            changed = true;
-          } 
+    for (let row = TILE_COUNT - 1; row > 0; row--) {
+      for (let col = 0; col < TILE_COUNT; col++) {
+        if (this.moveNext(col, row, col, row - 1, dryRun, Direction.Up)) {
+          changed = true;
         }
       }
     }
@@ -162,32 +398,13 @@ export class Game2048 extends Game {
     return changed;
   }
 
-  moveDown() {
+  moveDown(dryRun: boolean) {
     let changed = false;
 
-    for (let i = 0; i < 4; i++) {
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 4; col++) {
-          let tile = this.getTile(row, col);
-          let tileBelow = this.getTile(row + 1, col);
-
-          if (!tile || !tileBelow) {
-            continue;
-          }          
-
-          if (tile.value === 0) {
-            continue;
-          }
-
-          if (tile.value === tileBelow.value) {
-            tileBelow.double();
-            tile.reset();
-            changed = true;
-          } else if (tileBelow.value === 0) {
-            tileBelow.setValue(tile.value);
-            tile.reset();
-            changed = true;
-          } 
+    for (let row = 0; row < TILE_COUNT - 1; row++) {
+      for (let col = 0; col < TILE_COUNT; col++) {
+        if (this.moveNext(col, row, col, row + 1, dryRun, Direction.Down)) {
+          changed = true;
         }
       }
     }
@@ -195,32 +412,13 @@ export class Game2048 extends Game {
     return changed;
   }
 
-  moveRight() { 
+  moveRight(dryRun: boolean) {
     let changed = false;
 
-    for (let i = 0; i < 4; i++) {
-      for (let col = 0; col < 3; col++) {
-        for (let row = 0; row < 4; row++) {
-          let tile = this.getTile(row, col);
-          let tileRight = this.getTile(row, col + 1);
-
-          if (!tile || !tileRight) {
-            continue;
-          }          
-
-          if (tile.value === 0) {
-            continue;
-          }
-
-          if (tile.value === tileRight.value) {
-            tileRight.double();
-            tile.reset();
-            changed = true;
-          } else if (tileRight.value === 0) {
-            tileRight.setValue(tile.value);
-            tile.reset();
-            changed = true;
-          } 
+    for (let col = 0; col < TILE_COUNT - 1; col++) {
+      for (let row = 0; row < TILE_COUNT; row++) {
+        if (this.moveNext(col, row, col + 1, row, dryRun, Direction.Right)) {
+          changed = true;
         }
       }
     }
@@ -228,45 +426,26 @@ export class Game2048 extends Game {
     return changed;
   }
 
-  moveLeft() {
+  moveLeft(dryRun: boolean) {
     let changed = false;
 
-    for (let i = 0; i < 4; i++) {
-      for (let col = 3; col > 0; col--) {
-        for (let row = 0; row < 4; row++) {
-          let tile = this.getTile(row, col);
-          let tileLeft = this.getTile(row, col - 1);
-
-          if (!tile || !tileLeft) {
-            continue;
-          }          
-
-          if (tile.value === 0) {
-            continue;
-          }
-
-          if (tile.value === tileLeft.value) {
-            tileLeft.double();
-            tile.reset();
-            changed = true;
-          } else if (tileLeft.value === 0) {
-            tileLeft.setValue(tile.value);
-            tile.reset();
-            changed = true;
-          } 
+    for (let col = TILE_COUNT - 1; col > 0; col--) {
+      for (let row = 0; row < TILE_COUNT; row++) {
+        if (this.moveNext(col, row, col - 1, row, dryRun, Direction.Left)) {
+          changed = true;
         }
       }
     }
 
-    return changed;    
+    return changed;
   }
 
   updateScore() {
     let score = 0;
 
-    for (let row = 0; row < 4; row++) {
-      for (let col = 0; col < 4; col++) {
-        let tile = this.getTile(col, row);
+    for (let row = 0; row < TILE_COUNT; row++) {
+      for (let col = 0; col < TILE_COUNT; col++) {
+        let tile = this.getActiveTile(col, row);
         if (tile) {
           score = score + tile.value;
         }
